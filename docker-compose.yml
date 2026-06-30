@@ -1,0 +1,24 @@
+services:
+  saizeriya-gacha:
+    build: .
+    container_name: saizeriya-gacha
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.saizeriya-gacha.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.saizeriya-gacha.entrypoints=websecure"
+      - "traefik.http.routers.saizeriya-gacha.tls.certresolver=letsencrypt"
+      - "traefik.http.services.saizeriya-gacha.loadbalancer.server.port=3000"
+      - "homepage.enable=true"
+      - "homepage.title=萨莉亚扭蛋机"
+      - "homepage.description=随机点单生成器"
+      - "homepage.icon=🎰"
+      - "homepage.category=personal"
+      - "homepage.order=25"
+      - "homepage.url=https://${DOMAIN}"
+    networks:
+      - traefik_traefik-net
+
+networks:
+  traefik_traefik-net:
+    external: true
