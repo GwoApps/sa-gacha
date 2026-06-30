@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #e4e4e7;
+  --background: #fef8f4;
+  --foreground: #292524;
+  --saizeriya-red: #d42b2b;
+  --saizeriya-red-light: #fef2f2;
+  --saizeriya-green: #4a7c3f;
+  --saizeriya-cream: #fdf6ee;
 }
 
 @theme inline {
@@ -16,11 +20,18 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background-image: 
+    radial-gradient(ellipse at 20% 50%, rgba(212, 43, 43, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(74, 124, 63, 0.03) 0%, transparent 50%);
+}
+
+/* ===== Saizeriya-styled Card ===== */
+.sa-card {
+  @apply bg-white/95 backdrop-blur-sm rounded-2xl border border-red-100/80 shadow-lg shadow-red-900/5;
 }
 
 /* ===== Gacha Animations ===== */
 
-/* Machine shake */
 @keyframes gacha-shake {
   0%, 100% { transform: translateX(0) rotate(0deg); }
   5% { transform: translateX(-4px) rotate(-1deg); }
@@ -39,7 +50,6 @@ body {
   animation: gacha-shake 1.2s ease-in-out;
 }
 
-/* Lever wobble */
 @keyframes gacha-lever {
   0%, 100% { transform: translateX(-50%) rotate(0deg); }
   20% { transform: translateX(-50%) rotate(-15deg); }
@@ -51,7 +61,6 @@ body {
   animation: gacha-lever 0.8s ease-in-out;
 }
 
-/* Inside dome spin */
 @keyframes gacha-spin {
   0% { transform: rotate(0deg) scale(1); }
   50% { transform: rotate(180deg) scale(1.1); }
@@ -61,7 +70,6 @@ body {
   animation: gacha-spin 1.5s ease-in-out;
 }
 
-/* Capsule drop + bounce */
 @keyframes gacha-drop {
   0% {
     transform: translateY(-250px) scale(0.3) rotate(0deg);
@@ -92,38 +100,27 @@ body {
   animation: gacha-drop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Result fade in */
 @keyframes gacha-fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .animate-gacha-fadeIn {
   animation: gacha-fadeIn 0.5s ease-out forwards;
 }
 
 /* ===== Scrollbar ===== */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgb(39 39 42 / 0.5);
+  background: rgb(220 38 38 / 0.2);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(63 63 70 / 0.7);
+  background: rgb(220 38 38 / 0.35);
 }
 
 /* ===== Selection ===== */
 ::selection {
-  background: rgb(239 68 68 / 0.3);
-  color: white;
+  background: rgb(220 38 38 / 0.2);
+  color: #292524;
 }

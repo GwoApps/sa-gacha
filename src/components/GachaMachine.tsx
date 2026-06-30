@@ -35,9 +35,9 @@ export default function GachaMachine() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-8">
-      {/* Controls */}
-      <div className="w-full max-w-md space-y-5">
+    <div className="flex flex-col items-center gap-8 max-w-md mx-auto w-full">
+      {/* Controls Panel */}
+      <div className="w-full sa-card p-5 space-y-5">
         <RegionBadge />
         <BudgetButtons budget={budget} onChange={setBudget} />
         <FilterToggle filters={filters} onChange={setFilters} />
@@ -55,18 +55,18 @@ export default function GachaMachine() {
         onClick={handleGacha}
         disabled={spinning}
         className={`
-          relative px-12 py-4 rounded-2xl text-lg font-bold tracking-wider
-          transition-all duration-200
+          relative px-14 py-4 rounded-2xl text-lg font-bold tracking-wider
+          transition-all duration-200 shadow-lg
           ${
             spinning
-              ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed scale-95'
-              : 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:scale-105 active:scale-95'
+              ? 'bg-stone-200 text-stone-400 cursor-not-allowed scale-95 shadow-none'
+              : 'bg-red-600 text-white shadow-red-500/25 hover:bg-red-700 hover:shadow-red-500/40 hover:scale-105 active:scale-95'
           }
         `}
       >
         {spinning ? (
           <span className="flex items-center gap-2">
-            <span className="inline-block w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin" />
+            <span className="inline-block w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full animate-spin" />
             扭动中...
           </span>
         ) : (

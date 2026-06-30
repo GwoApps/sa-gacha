@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "萨莉亚扭蛋机 | Saizeriya Gacha",
-  description: "随机生成你的萨莉亚点单方案 — 选地区、定预算、扭出惊喜！",
+  title: "广东萨莉亚扭蛋机 | Saizeriya Gacha",
+  description: "基于广东萨莉亚真实菜单，随机生成你的点单方案 — 选预算、扭一下！",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-200">
+      <body className="min-h-full flex flex-col">
         {children}
       </body>
     </html>
