@@ -1,4 +1,4 @@
-import { MenuItem, Region, getItems, getAllCategories } from '@/data/menu';
+import { MenuItem, Region, getItems } from '@/data/menu';
 
 export interface GachaFilters {
   excludeDrinks: boolean;
@@ -24,6 +24,23 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+/**
+ * Budget-filling gacha algorithm
+ *
+ * Core strategy: run many randomized greedy-fill attempts and pick the one
+ * whose total lands closest to the target budget.
+ *
+ * Each attempt:
+ *   1. Shuffle items (gives natural randomness & variety)
+ *   2. Greedy walk: take each item if its price fits within remaining budget
+ *   3. Budget-fill phase: after greedy walk, add cheap items one-by-one to
+ *      soak up remaining budget and get as close to target as possible
+ *   4. Score the combination by deviation from budget + variety bonus
+ *
+ * Target deviation range: total should land within [88%, 112%] of budget.
+ * The algorithm naturally undershoots more often than overshoots (greedy fill
+ * stops when no single item fits), so the budget-fill phase is critical.
+ */
 export function generateOrder(
   region: Region,
   budget: number,
@@ -43,95 +60,117 @@ export function generateOrder(
     return { items: [], total: 0, budget };
   }
 
-  // If budget is 0 (unlimited), generate 2-5 random items
+  // ── Unlimited budget: 2-5 random items ──
   if (budget <= 0) {
-    const itemCount = Math.floor(Math.random() * 4) + 2; // 2-5 items
-    const shuffled = shuffleArray(items).slice(0, itemCount);
-    const total = shuffled.reduce((sum, i) => sum + i.price, 0);
+    const itemCount = Math.floor(Math.random() * 4) + 2;
+    const picked = shuffleArray(items).slice(0, itemCount);
     return {
-      items: shuffled.map((i) => ({ ...i, quantity: 1 })),
-      total,
+      items: picked.map((i) => ({ ...i, quantity: 1 })),
+      total: picked.reduce((sum, i) => sum + i.price, 0),
       budget: 0,
     };
   }
 
-  // Budget-constrained generation
-  // Algorithm: randomly pick items, accept if total stays within budget
-  // Allow slight overshoot (up to 20%) for a realistic feel
-  const overshootBudget = Math.floor(budget * 1.2);
-  let remainingBudget = budget;
-  const selected: GachaItem[] = [];
+  // ── Budget-constrained generation ──
+  const MAX_ATTEMPTS = 30;
+  const MIN_ITEMS = 2;
+  const MAX_ITEMS = 7;
+  // Acceptable deviation window: [88%, 112%]
+  // Items can individually overshoot remaining budget by at most 15%
+  const ITEM_OVERSHOOT_RATIO = 1.15;
+  const TARGET_MIN_RATIO = 0.88;
+  const TARGET_MAX_RATIO = 1.12;
 
-  // Categorize items by price for smarter selection
-  const affordableItems = items.filter((i) => i.price <= overshootBudget && i.price > 0);
+  // Sort items by price ascending once — used for the budget-fill phase
+  const itemsByPrice = [...items].sort((a, b) => a.price - b.price);
+  const cheapestPrice = itemsByPrice[0]?.price ?? Infinity;
 
-  if (affordableItems.length === 0) {
-    // Everything is over budget — pick the cheapest item
-    const cheapest = items.reduce((a, b) => (a.price < b.price ? a : b));
-    return {
-      items: [{ ...cheapest, quantity: 1 }],
-      total: cheapest.price,
-      budget,
-    };
-  }
+  let bestSelection: GachaItem[] = [];
+  let bestScore = Infinity;
 
-  // First pick: always from a random category for variety
-  const categories = getAllCategories(region);
-  const validCategories = categories.filter((cat) => {
-    if (filters.excludeDrinks && cat === 'drink') return false;
-    if (filters.excludeDesserts && cat === 'dessert') return false;
-    return true;
-  });
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const shuffled = shuffleArray(items);
+    const selected: MenuItem[] = [];
+    let remaining = budget;
 
-  // Pick a random category for the first item
-  const randomCat = validCategories[Math.floor(Math.random() * validCategories.length)];
-  const catItems = affordableItems.filter((i) => i.category === randomCat);
-  const firstItem = catItems.length > 0
-    ? catItems[Math.floor(Math.random() * catItems.length)]
-    : affordableItems[Math.floor(Math.random() * affordableItems.length)];
-
-  selected.push({ ...firstItem, quantity: 1 });
-  remainingBudget -= firstItem.price;
-
-  // Try to add more items greedily with some randomness
-  // max iterations to avoid infinite loops
-  let attempts = 0;
-  const maxAttempts = 100;
-
-  while (remainingBudget > 0 && attempts < maxAttempts) {
-    attempts++;
-
-    // Find items that can fit in remaining budget (with overshoot)
-    const possibleItems = affordableItems.filter((i) => i.price <= remainingBudget + Math.floor(remainingBudget * 0.2));
-
-    if (possibleItems.length === 0) break;
-
-    // Randomly decide to stop (more items = higher chance of stopping)
-    if (selected.length >= 2 && Math.random() < 0.15 + selected.length * 0.05) {
-      break;
+    // ── Phase 1: Greedy fill ──
+    for (const item of shuffled) {
+      if (selected.length >= MAX_ITEMS) break;
+      if (item.price <= remaining * ITEM_OVERSHOOT_RATIO) {
+        selected.push(item);
+        remaining -= item.price;
+      }
     }
 
-    // Pick a random item, preferring different categories
-    const pickedCategories = new Set(selected.map((i) => i.category));
-    const differentCatItems = possibleItems.filter((i) => !pickedCategories.has(i.category));
+    // ── Phase 2: Budget-fill — soak up remaining budget with cheap items ──
+    // After the greedy pass, there's typically some leftover budget too small
+    // for any single remaining item. We try adding the cheapest available items
+    // one-by-one to get as close to budget as possible.
+    const usedIds = new Set(selected.map((i) => i.id));
 
-    const pickPool = differentCatItems.length > 0 && Math.random() < 0.6
-      ? differentCatItems
-      : possibleItems;
+    while (remaining >= cheapestPrice && selected.length < MAX_ITEMS) {
+      // Find the cheapest item that fits within the overshoot allowance
+      const filler = itemsByPrice.find(
+        (i) => !usedIds.has(i.id) && i.price <= remaining * ITEM_OVERSHOOT_RATIO
+      );
+      if (!filler) break;
+      selected.push(filler);
+      usedIds.add(filler.id);
+      remaining -= filler.price;
+    }
 
-    const chosen = pickPool[Math.floor(Math.random() * pickPool.length)];
-    selected.push({ ...chosen, quantity: 1 });
-    remainingBudget -= chosen.price;
+    // ── Phase 3: Ensure minimum items ──
+    // If we have fewer than MIN_ITEMS, fill with cheapest items regardless
+    if (selected.length < MIN_ITEMS) {
+      for (const cheap of itemsByPrice) {
+        if (selected.length >= MIN_ITEMS) break;
+        if (usedIds.has(cheap.id)) continue;
+        selected.push(cheap);
+        usedIds.add(cheap.id);
+        remaining -= cheap.price;
+      }
+    }
 
-    // Don't add more than 8 items
-    if (selected.length >= 8) break;
+    // ── Scoring ──
+    const total = selected.reduce((s, i) => s + i.price, 0);
+    const deviationPct = (Math.abs(total - budget) / budget) * 100;
+
+    // Penalties for being outside the target window
+    const underPenalty =
+      total < budget * TARGET_MIN_RATIO
+        ? ((budget * TARGET_MIN_RATIO - total) / budget) * 50
+        : 0;
+    const overPenalty =
+      total > budget * TARGET_MAX_RATIO
+        ? ((total - budget * TARGET_MAX_RATIO) / budget) * 30
+        : 0;
+
+    // Bonus for category variety (encourages well-rounded meals)
+    const uniqueCats = new Set(selected.map((i) => i.category)).size;
+    const varietyBonus = uniqueCats * 1.5;
+
+    // Soft penalty for too few items
+    const countPenalty = selected.length < MIN_ITEMS ? 30 : 0;
+
+    const score = deviationPct + underPenalty + overPenalty - varietyBonus + countPenalty;
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestSelection = selected.map((i) => ({ ...i, quantity: 1 }));
+    }
   }
 
-  const total = selected.reduce((sum, i) => sum + i.price, 0);
+  // Fallback: if somehow nothing was selected (shouldn't happen)
+  if (bestSelection.length === 0) {
+    const cheapest = itemsByPrice[0];
+    bestSelection = [{ ...cheapest, quantity: 1 }];
+  }
+
+  const finalTotal = bestSelection.reduce((s, i) => s + i.price, 0);
 
   return {
-    items: selected,
-    total,
+    items: bestSelection,
+    total: finalTotal,
     budget,
   };
 }
