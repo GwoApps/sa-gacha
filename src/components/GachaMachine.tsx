@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { generateOrder, GachaResult, GachaFilters } from '@/utils/gacha';
 import RegionBadge from './RegionBadge';
 import BudgetButtons from './BudgetButtons';
@@ -17,6 +17,14 @@ export default function GachaMachine() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<GachaResult | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const gachaRef = useRef<HTMLDivElement>(null);
+
+  const scrollToGacha = useCallback(() => {
+    // Wait for DOM update then scroll to center the animation
+    requestAnimationFrame(() => {
+      gachaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
 
   const handleGacha = useCallback(() => {
     if (spinning) return;
@@ -27,7 +35,8 @@ export default function GachaMachine() {
     const order = generateOrder(budget, filters);
     setResult(order);
     setSpinning(true);
-  }, [budget, filters, spinning]);
+    scrollToGacha();
+  }, [budget, filters, spinning, scrollToGacha]);
 
   const handleAnimationComplete = useCallback(() => {
     setSpinning(false);
@@ -44,14 +53,15 @@ export default function GachaMachine() {
       </div>
 
       {/* Gacha Animation Area */}
-      <GachaAnimation
-        spinning={spinning}
-        result={result}
-        onComplete={handleAnimationComplete}
-      />
+      <div ref={gachaRef} className="scroll-mt-8 w-full flex flex-col items-center gap-8">
+        <GachaAnimation
+          spinning={spinning}
+          result={result}
+          onComplete={handleAnimationComplete}
+        />
 
-      {/* Trigger Button */}
-      <button
+        {/* Trigger Button */}
+        <button
         onClick={handleGacha}
         disabled={spinning}
         className={`
@@ -81,6 +91,7 @@ export default function GachaMachine() {
       {result && (
         <OrderList result={result} visible={showResult} />
       )}
+      </div>{/* end gachaRef */}
     </div>
   );
 }
