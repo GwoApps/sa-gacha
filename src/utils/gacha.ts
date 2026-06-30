@@ -1,4 +1,4 @@
-import { MenuItem, Region, getItems } from '@/data/menu';
+import { MenuItem, getAllItems, getAllCategories } from '@/data/menu';
 
 export interface GachaFilters {
   excludeDrinks: boolean;
@@ -25,28 +25,23 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * Budget-filling gacha algorithm
+ * 广东萨莉亚扭蛋机 — 预算填充算法
  *
- * Core strategy: run many randomized greedy-fill attempts and pick the one
- * whose total lands closest to the target budget.
+ * 核心策略：运行 30 次随机贪心填充，选取总额最贴近预算的结果。
  *
- * Each attempt:
- *   1. Shuffle items (gives natural randomness & variety)
- *   2. Greedy walk: take each item if its price fits within remaining budget
- *   3. Budget-fill phase: after greedy walk, add cheap items one-by-one to
- *      soak up remaining budget and get as close to target as possible
- *   4. Score the combination by deviation from budget + variety bonus
+ * 每轮尝试：
+ *   1. 随机打乱菜品（自然随机 + 品种多样性）
+ *   2. 贪心遍历：单品不超过剩余预算 × 1.15 就加入
+ *   3. 预算填充：贪心结束后用最便宜的单品逐项填充剩余预算
+ *   4. 评分：偏差率 + 过低惩罚 + 过高惩罚 + 品种奖励
  *
- * Target deviation range: total should land within [88%, 112%] of budget.
- * The algorithm naturally undershoots more often than overshoots (greedy fill
- * stops when no single item fits), so the budget-fill phase is critical.
+ * 目标窗口：总价落在预算的 [88%, 112%] 之间
  */
 export function generateOrder(
-  region: Region,
   budget: number,
   filters: GachaFilters
 ): GachaResult {
-  let items = getItems(region);
+  let items = getAllItems();
 
   // Apply filters
   if (filters.excludeDrinks) {
@@ -75,13 +70,10 @@ export function generateOrder(
   const MAX_ATTEMPTS = 30;
   const MIN_ITEMS = 2;
   const MAX_ITEMS = 7;
-  // Acceptable deviation window: [88%, 112%]
-  // Items can individually overshoot remaining budget by at most 15%
   const ITEM_OVERSHOOT_RATIO = 1.15;
   const TARGET_MIN_RATIO = 0.88;
   const TARGET_MAX_RATIO = 1.12;
 
-  // Sort items by price ascending once — used for the budget-fill phase
   const itemsByPrice = [...items].sort((a, b) => a.price - b.price);
   const cheapestPrice = itemsByPrice[0]?.price ?? Infinity;
 
@@ -102,14 +94,10 @@ export function generateOrder(
       }
     }
 
-    // ── Phase 2: Budget-fill — soak up remaining budget with cheap items ──
-    // After the greedy pass, there's typically some leftover budget too small
-    // for any single remaining item. We try adding the cheapest available items
-    // one-by-one to get as close to budget as possible.
+    // ── Phase 2: Budget-fill with cheapest items ──
     const usedIds = new Set(selected.map((i) => i.id));
 
     while (remaining >= cheapestPrice && selected.length < MAX_ITEMS) {
-      // Find the cheapest item that fits within the overshoot allowance
       const filler = itemsByPrice.find(
         (i) => !usedIds.has(i.id) && i.price <= remaining * ITEM_OVERSHOOT_RATIO
       );
@@ -120,7 +108,6 @@ export function generateOrder(
     }
 
     // ── Phase 3: Ensure minimum items ──
-    // If we have fewer than MIN_ITEMS, fill with cheapest items regardless
     if (selected.length < MIN_ITEMS) {
       for (const cheap of itemsByPrice) {
         if (selected.length >= MIN_ITEMS) break;
@@ -135,7 +122,6 @@ export function generateOrder(
     const total = selected.reduce((s, i) => s + i.price, 0);
     const deviationPct = (Math.abs(total - budget) / budget) * 100;
 
-    // Penalties for being outside the target window
     const underPenalty =
       total < budget * TARGET_MIN_RATIO
         ? ((budget * TARGET_MIN_RATIO - total) / budget) * 50
@@ -145,11 +131,8 @@ export function generateOrder(
         ? ((total - budget * TARGET_MAX_RATIO) / budget) * 30
         : 0;
 
-    // Bonus for category variety (encourages well-rounded meals)
     const uniqueCats = new Set(selected.map((i) => i.category)).size;
     const varietyBonus = uniqueCats * 1.5;
-
-    // Soft penalty for too few items
     const countPenalty = selected.length < MIN_ITEMS ? 30 : 0;
 
     const score = deviationPct + underPenalty + overPenalty - varietyBonus + countPenalty;
@@ -160,7 +143,6 @@ export function generateOrder(
     }
   }
 
-  // Fallback: if somehow nothing was selected (shouldn't happen)
   if (bestSelection.length === 0) {
     const cheapest = itemsByPrice[0];
     bestSelection = [{ ...cheapest, quantity: 1 }];

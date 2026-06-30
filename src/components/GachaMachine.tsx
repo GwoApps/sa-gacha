@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Region } from '@/data/menu';
 import { generateOrder, GachaResult, GachaFilters } from '@/utils/gacha';
-import RegionSelect from './RegionSelect';
+import RegionBadge from './RegionBadge';
 import BudgetButtons from './BudgetButtons';
 import FilterToggle from './FilterToggle';
 import GachaAnimation from './GachaAnimation';
 import OrderList from './OrderList';
 
 export default function GachaMachine() {
-  const [region, setRegion] = useState<Region>('japan');
   const [budget, setBudget] = useState(0);
   const [filters, setFilters] = useState<GachaFilters>({
     excludeDrinks: false,
@@ -26,10 +24,10 @@ export default function GachaMachine() {
     setShowResult(false);
     setResult(null);
 
-    const order = generateOrder(region, budget, filters);
+    const order = generateOrder(budget, filters);
     setResult(order);
     setSpinning(true);
-  }, [region, budget, filters, spinning]);
+  }, [budget, filters, spinning]);
 
   const handleAnimationComplete = useCallback(() => {
     setSpinning(false);
@@ -40,7 +38,7 @@ export default function GachaMachine() {
     <div className="flex flex-col items-center gap-8">
       {/* Controls */}
       <div className="w-full max-w-md space-y-5">
-        <RegionSelect region={region} onChange={setRegion} />
+        <RegionBadge />
         <BudgetButtons budget={budget} onChange={setBudget} />
         <FilterToggle filters={filters} onChange={setFilters} />
       </div>
@@ -49,7 +47,6 @@ export default function GachaMachine() {
       <GachaAnimation
         spinning={spinning}
         result={result}
-        region={region}
         onComplete={handleAnimationComplete}
       />
 
@@ -82,7 +79,7 @@ export default function GachaMachine() {
 
       {/* Result Display */}
       {result && (
-        <OrderList result={result} region={region} visible={showResult} />
+        <OrderList result={result} visible={showResult} />
       )}
     </div>
   );

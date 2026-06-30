@@ -2,16 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { GachaResult } from '@/utils/gacha';
-import { regions, Region } from '@/data/menu';
 
 interface GachaAnimationProps {
   spinning: boolean;
   result: GachaResult | null;
-  region: Region;
   onComplete: () => void;
 }
 
-export default function GachaAnimation({ spinning, result, region, onComplete }: GachaAnimationProps) {
+export default function GachaAnimation({ spinning, result, onComplete }: GachaAnimationProps) {
   const [showCapsules, setShowCapsules] = useState(false);
   const [capsulesRevealed, setCapsulesRevealed] = useState<boolean[]>([]);
 
@@ -20,16 +18,14 @@ export default function GachaAnimation({ spinning, result, region, onComplete }:
       setShowCapsules(false);
       setCapsulesRevealed([]);
 
-      // Phase 1: machine shake (1s)
       const t1 = setTimeout(() => {
         setShowCapsules(true);
       }, 1200);
 
-      // Phase 2: reveal capsules one by one
       const totalItems = result.items.length;
       const revealDelays: NodeJS.Timeout[] = [];
       for (let i = 0; i < totalItems; i++) {
-        const delay = 1200 + i * 400; // 400ms between each capsule drop
+        const delay = 1200 + i * 400;
         const t = setTimeout(() => {
           setCapsulesRevealed((prev) => {
             const next = [...prev];
@@ -40,7 +36,6 @@ export default function GachaAnimation({ spinning, result, region, onComplete }:
         revealDelays.push(t);
       }
 
-      // Phase 3: all done
       const doneDelay = 1200 + (totalItems || 1) * 400 + 600;
       const tDone = setTimeout(() => {
         onComplete();
@@ -56,22 +51,17 @@ export default function GachaAnimation({ spinning, result, region, onComplete }:
 
   if (!spinning || !result) return null;
 
-  const currencySymbol = regions[region].currencySymbol;
-
   return (
     <div className="relative w-full max-w-lg mx-auto">
       {/* Gacha Machine */}
       <div className={`relative mb-8 ${spinning ? 'animate-gacha-shake' : ''}`}>
-        {/* Machine body */}
         <div className="relative mx-auto w-72 h-80">
           {/* Glass dome */}
           <div className="absolute inset-0 rounded-t-[40px] rounded-b-[120px] bg-gradient-to-b from-zinc-800/80 to-zinc-900/80 border-2 border-zinc-600/50 overflow-hidden backdrop-blur-sm shadow-2xl">
-            {/* Inner glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-amber-500/5" />
 
-            {/* Spinning balls inside dome */}
-            <div className="absolute inset-4 flex items-center justify-center">
-              {spinning && (
+            {spinning && (
+              <div className="absolute inset-4 flex items-center justify-center">
                 <div className="grid grid-cols-4 gap-2 animate-gacha-spin">
                   {['🍕', '🍝', '🥩', '🍚', '🥗', '🍰', '🥤', '🐌'].map((e, i) => (
                     <span
@@ -83,10 +73,9 @@ export default function GachaAnimation({ spinning, result, region, onComplete }:
                     </span>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Dome highlight */}
             <div className="absolute top-4 left-8 w-20 h-3 bg-white/5 rounded-full blur-sm" />
           </div>
 
@@ -105,7 +94,7 @@ export default function GachaAnimation({ spinning, result, region, onComplete }:
           {/* Brand text */}
           <div className="absolute bottom-28 left-1/2 -translate-x-1/2 text-center">
             <div className="text-xs font-bold text-red-400 tracking-widest">SALERIYA</div>
-            <div className="text-[10px] text-zinc-500 tracking-wider">GACHA</div>
+            <div className="text-[10px] text-zinc-500 tracking-wider">广东限定</div>
           </div>
 
           {/* Exit slot */}
